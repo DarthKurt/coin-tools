@@ -22,16 +22,15 @@ import { createWorker } from 'tesseract.js';
 function solver(timeout) {
     const worker = createWorker({
         logger: m => console.log(m)
-      });    
+    });
 
-    var questions = [];
-    var questionImages = [];
-    var questionImage = "";
-    var questionImageSource = "";
-    var numericWordArray = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+    let questions = [];
+    let questionImages = [];
+    let questionImage = "";
+    let questionImageSource = "";
 
-    async function waitForImage(imgElement) {
-        return await new Promise(res => {
+    function waitForImage(imgElement) {
+        return new Promise(res => {
             if (imgElement.complete) {
                 return res();
             }
@@ -40,24 +39,33 @@ function solver(timeout) {
         });
     }
 
-    async function toDataURL(c) {
-        return await new Promise(function (resolve) {
-            const dataURI = c.toDataURL('image/png');
-            return resolve(dataURI);
-        })
+    async function createImageFrom(src) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = src;
+        
+        await waitForImage(img);
 
+        return img;
     }
 
-    async function removeNoiseUsingImageData(imgdata, width, height, threshold) {
-        return await new Promise(function (resolve) {
+    function toDataURL(c) {
+        return new Promise(function (resolve) {
+            const dataURI = c.toDataURL('image/png');
+            return resolve(dataURI);
+        });
+    }
+
+    function removeNoiseUsingImageData(imgdata, width, height, threshold) {
+        return new Promise(function (resolve) {
             let noiseCount = 0;
             let noiseRowStart = 0;
 
             for (let column = 0; column < width; column++) {
                 for (let row = 0; row < height; row++) {
 
-                    let position = row * width + column;
-                    let pixelAtPosition = imgdata[position];
+                    const position = row * width + column;
+                    const pixelAtPosition = imgdata[position];
 
                     //Remove noise from first row and last row
                     if (row == 0 || row == height - 1) {
@@ -74,7 +82,7 @@ function solver(timeout) {
                         if (noiseCount > 0 && noiseCount <= threshold) {
                             //Start from noiseRow till current row and remove noise
                             while (noiseRowStart < row) {
-                                let noisePosition = noiseRowStart * width + column;
+                                const noisePosition = noiseRowStart * width + column;
                                 imgdata[noisePosition] = 0xFFFFFFFF;
                                 noiseRowStart++;
                             }
@@ -85,7 +93,6 @@ function solver(timeout) {
             }
             return resolve(imgdata);
         })
-
     }
 
     async function imageUsingOCRAntibotQuestion(image) {
@@ -95,10 +102,7 @@ function solver(timeout) {
             return;
         }
 
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src
-        await waitForImage(img);
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
@@ -106,8 +110,6 @@ function solver(timeout) {
         ctx.drawImage(img, 0, 0);
 
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
-        // console.log(imageData.data);
-
         ctx.putImageData(imageData, 0, 0);
 
         let src = imread(c);
@@ -120,9 +122,8 @@ function solver(timeout) {
         src.delete();
         dst.delete();
 
-        // console.log( c.toDataURL());
         let imageDataURI = await toDataURL(c);
-        return await (imageUsingOCR(worker, imageDataURI));
+        return imageUsingOCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibotLowValues(image) {
@@ -132,17 +133,12 @@ function solver(timeout) {
             return;
         }
 
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src;
-        await waitForImage(img);
-
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
         const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        // console.log(await c.toDataURL());
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
 
@@ -163,13 +159,12 @@ function solver(timeout) {
 
         //Remove Noise from Image
         let imgdata = new Uint32Array(data.buffer);
-        imgdata = await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
+        await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
 
         ctx.putImageData(imageData, 0, 0);
 
-        // console.log( c.toDataURL());
         let imageDataURI = await toDataURL(c);
-        return await (imageUsingOCR(worker, imageDataURI));
+        return imageUsingOCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibotHighValues(image) {
@@ -179,17 +174,12 @@ function solver(timeout) {
             return;
         }
 
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src;
-        await waitForImage(img);
-
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
         const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        // console.log(await c.toDataURL());
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
 
@@ -212,28 +202,21 @@ function solver(timeout) {
 
         //Remove Noise from Image
         let imgdata = new Uint32Array(data.buffer);
-        imgdata = await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
+        await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
 
         ctx.putImageData(imageData, 0, 0);
 
-        // console.log( c.toDataURL());
         let imageDataURI = await toDataURL(c);
-        return await (imageUsingOCR(worker, imageDataURI));
+        return imageUsingOCR(worker, imageDataURI);
     }
 
-    async function splitImageUsingOCRAntibotLowValues(questionImageSource) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = questionImageSource;
-        await waitForImage(img);
-
+    async function splitImageUsingOCRAntibotLowValues(imgSrc) {
+        const img = await createImageFrom(imgSrc);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
         const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        // console.log(await c.toDataURL());
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
 
@@ -254,25 +237,18 @@ function solver(timeout) {
         }
 
         ctx.putImageData(imageData, 0, 0);
-        //console.log(c.toDataURL());
         let imageDataURI = await toDataURL(c);
-        return await (splitImage(imageDataURI));
+        return splitImage(imageDataURI);
 
     }
 
-    async function splitImageUsingDefaultValues(questionImageSource) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = questionImageSource;
-        await waitForImage(img);
-
+    async function splitImageUsingDefaultValues(imgSrc) {
+        const img = await createImageFrom(imgSrc);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
         const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        // console.log(await c.toDataURL());
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
 
@@ -294,30 +270,21 @@ function solver(timeout) {
 
         //Remove Noise from Image
         let imgdata = new Uint32Array(data.buffer);
-        imgdata = await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
+        await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
 
         ctx.putImageData(imageData, 0, 0);
 
-        // console.log(c.toDataURL());
         let imageDataURI = await toDataURL(c);
-        return await splitImage(imageDataURI);
-
+        return splitImage(imageDataURI);
     }
 
-    async function splitImageUsingOCRAntibotHighValues(questionImageSource) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = questionImageSource;
-        await waitForImage(img);
-
+    async function splitImageUsingOCRAntibotHighValues(imgSrc) {
+        const img = await createImageFrom(imgSrc);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
         const ctx = c.getContext("2d");
         ctx.drawImage(img, 0, 0);
-
-        // console.log(await c.toDataURL());
 
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
@@ -342,22 +309,18 @@ function solver(timeout) {
 
         //Remove Noise from Image
         let imgdata = new Uint32Array(data.buffer);
-        imgdata = await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
+        await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
 
         ctx.putImageData(imageData, 0, 0);
 
         let imageDataURI = await toDataURL(c);
 
-        return await splitImage(imageDataURI);
+        return splitImage(imageDataURI);
 
     }
 
-    async function splitImage(imgSource) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = imgSource
-        await waitForImage(img);
+    async function splitImage(imgSrc) {
+        const img = await createImageFrom(imgSrc);
         const c = document.createElement("canvas")
         c.width = img.width;
         c.height = img.height;
@@ -370,27 +333,24 @@ function solver(timeout) {
         //Scan from left to right
         //Get the weight of white spaces
         //Ignore first white space and last white space
-        var sequenceLength = 0;
-        var prevColumn = 0;
-        var first = 0;
-        var second = 0;
-        var third = 0;
-        var firstMaxColumn = 0;
-        var secondMaxColumn = 0;
-        var thirdMaxColumn = 0;
+        let sequenceLength = 0;
+        let prevColumn = 0;
+        let first = 0;
+        let second = 0;
+        let third = 0;
+        let firstMaxColumn = 0;
+        let secondMaxColumn = 0;
+        let thirdMaxColumn = 0;
 
         //Remove Noise from Image
         let imgdata = new Uint32Array(data.buffer);
         imgdata = await removeNoiseUsingImageData(imgdata, c.width, c.height, 1);
 
-        // ctx.putImageData(imageData, 0, 0);
-        //console.log(await c.toDataURL());
-
         for (let column = Math.floor(0.1 * c.width); column < c.width; column++) {
-            var count = 0;
+            let count = 0;
             for (let row = 0; row < c.height; row++) {
-                var position = row * c.width + column;
-                var pixelAtPosition = imgdata[position];
+                const position = row * c.width + column;
+                const pixelAtPosition = imgdata[position];
 
                 if (pixelAtPosition == 0xFFFFFFFF) {
                     count++;
@@ -429,14 +389,13 @@ function solver(timeout) {
             }
 
             prevColumn = column;
-
         }
 
         firstMaxColumn = firstMaxColumn - Math.floor(first / 2)
         secondMaxColumn = secondMaxColumn - Math.floor(second / 2)
         thirdMaxColumn = thirdMaxColumn - Math.floor(third / 2)
 
-        var columnArray = [firstMaxColumn, secondMaxColumn, thirdMaxColumn];
+        let columnArray = [firstMaxColumn, secondMaxColumn, thirdMaxColumn];
         columnArray = columnArray.sort(function (a, b) {
             return a - b;
         });
@@ -447,73 +406,59 @@ function solver(timeout) {
         let url = await questionImage.src.replace(/^data:image\/\w+;base64,/, "");
         let buffer = new Buffer(url, 'base64');
         //Check if overlaps are detected and split the images
-        var len = [];
+        const len = [];
         len[0] = columnArray[0] - 0;
         len[1] = columnArray[1] - columnArray[0];
         len[2] = columnArray[2] - columnArray[1];
         len[3] = c.width - columnArray[2];
 
-        for (let i = 0; i < len.length; i++) {
-            if (len[i] < Math.floor(0.1 * c.width)) {
+        for (const element of len) {
+            if (element < Math.floor(0.1 * c.width)) {
                 console.warn("Overlap detected");
                 return;
             }
         }
 
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve, _reject) => {
 
-            Jimp.read(buffer).then(async function (data) {
-                data.crop(0, 0, columnArray[0], questionImage.height)
-                    .getBase64(Jimp.AUTO, async function (err, src) {
-                        let img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.src = src;
-                        await waitForImage(img);
-                        questionImages[0] = img;
+            Jimp.read(buffer).then(async function (imgData) {
+                imgData.crop(0, 0, columnArray[0], questionImage.height)
+                    .getBase64(Jimp.AUTO, async function (_err, src) {
+                        const newImage = await createImageFrom(src);
+                        questionImages[0] = newImage;
                         resolve();
                     })
             });
         });
 
-        await new Promise((resolve, reject) => {
-            Jimp.read(buffer).then(async function (data) {
-                data.crop(columnArray[0], 0, columnArray[1] - columnArray[0], questionImage.height)
-                    .getBase64(Jimp.AUTO, async function (err, src) {
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.src = src;
-                        await waitForImage(img);
-                        questionImages[1] = img;
+        await new Promise((resolve, _reject) => {
+            Jimp.read(buffer).then(async function (imgData) {
+                imgData.crop(columnArray[0], 0, columnArray[1] - columnArray[0], questionImage.height)
+                    .getBase64(Jimp.AUTO, async function (_err, src) {
+                        const newImage = await createImageFrom(src);
+                        questionImages[1] = newImage;
                         resolve();
-
                     })
             });
         });
 
-        await new Promise((resolve, reject) => {
-            Jimp.read(buffer).then(async function (data) {
-                data.crop(columnArray[1], 0, columnArray[2] - columnArray[1], questionImage.height)
-                    .getBase64(Jimp.AUTO, async function (err, src) {
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.src = src;
-                        await waitForImage(img);
-                        questionImages[2] = img;
+        await new Promise((resolve, _reject) => {
+            Jimp.read(buffer).then(async function (imgData) {
+                imgData.crop(columnArray[1], 0, columnArray[2] - columnArray[1], questionImage.height)
+                    .getBase64(Jimp.AUTO, async function (_err, src) {
+                        const newImage = await createImageFrom(src);
+                        questionImages[2] = newImage;
                         resolve();
-
                     })
             });
         });
 
-        await new Promise((resolve, reject) => {
-            Jimp.read(buffer).then(async function (data) {
-                data.crop(columnArray[2], 0, c.width - columnArray[2], questionImage.height)
-                    .getBase64(Jimp.AUTO, async function (err, src) {
-                        const img = new Image();
-                        img.crossOrigin = 'anonymous';
-                        img.src = src;
-                        await waitForImage(img);
-                        questionImages[3] = img;
+        await new Promise((resolve, _reject) => {
+            Jimp.read(buffer).then(async function (imgData) {
+                imgData.crop(columnArray[2], 0, c.width - columnArray[2], questionImage.height)
+                    .getBase64(Jimp.AUTO, async function (_err, src) {
+                        const newImage = await createImageFrom(src);
+                        questionImages[3] = newImage;
                         resolve();
                     })
             });
@@ -527,10 +472,7 @@ function solver(timeout) {
             return;
         }
 
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src
-        await waitForImage(img);
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = image.width;
         c.height = image.height;
@@ -539,8 +481,6 @@ function solver(timeout) {
         ctx.drawImage(img, 0, 0);
 
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
-        // console.log(imageData.data);
-
         ctx.putImageData(imageData, 0, 0);
 
         const src = imread(c);
@@ -552,20 +492,15 @@ function solver(timeout) {
         src.delete();
         dst.delete();
 
-        // console.log( c.toDataURL());
         let imageDataURI = await toDataURL(c);
 
-        return await (imageUsingOCR(worker, imageDataURI));
+        return imageUsingOCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibot1(image) {
-        var img1 = image;
+        const img1 = image;
 
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = img1.src
-        await waitForImage(img);
-
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = img1.width;
         c.height = img1.height;
@@ -576,11 +511,11 @@ function solver(timeout) {
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
 
-        var hashMap = new Map();
+        let hashMap = new Map();
 
         for (let i = 0; i < data.length; i += 4) {
 
-            var rgba = data[i] + ',' + data[i + 1] + ',' + data[i + 2] + ',' + data[i + 3];
+            const rgba = data[i] + ',' + data[i + 1] + ',' + data[i + 2] + ',' + data[i + 3];
 
             if (hashMap.has(rgba)) {
                 hashMap.set(rgba, hashMap.get(rgba) + 1)
@@ -590,9 +525,6 @@ function solver(timeout) {
 
         }
 
-        var data_tmp = [];
-        var data_tmp_edges = [];
-
         for (let i = 0; i < data.length; i += 4) {
 
             if (data[i + 3] > 130 && data[i] < 100 && data[i + 1] < 100 && data[i + 2] < 100) {
@@ -600,9 +532,6 @@ function solver(timeout) {
                 data[i + 1] = 0;
                 data[i + 2] = 0;
                 data[i + 3] = 255;
-                data_tmp_edges[i] = 1;
-                data_tmp_edges[i + 1] = 1;
-                data_tmp_edges[i + 2] = 1;
 
             } else {
                 data[i] = 255;
@@ -614,22 +543,13 @@ function solver(timeout) {
         }
 
         ctx.putImageData(imageData, 0, 0);
-
         let imageDataURI = await toDataURL(c);
 
-        return await (imageUsingOCR(worker, imageDataURI));
-
+        return imageUsingOCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibotFiltered(image) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src
-        await waitForImage(img);
-
-        let mat = imread(img);
-
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = image.width;
         c.height = image.height;
@@ -651,7 +571,6 @@ function solver(timeout) {
                 data[i + 2] = 0;
                 data[i + 3] = 255;
             }
-
         }
 
         ctx.putImageData(imageData, 0, 0);
@@ -676,19 +595,13 @@ function solver(timeout) {
         dst.delete();
         M.delete();
 
-        // console.log( c.toDataURL());
-
         let imageDataURI = await toDataURL(c);
-        return await (imageUsingOCR(worker, imageDataURI));
+        return imageUsingOCR(worker, imageDataURI);
 
     }
 
     async function imageUsingOCRAntibotFiltered1(image) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src
-        await waitForImage(img);
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = image.width;
         c.height = image.height;
@@ -696,7 +609,6 @@ function solver(timeout) {
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
-        // console.log(data);
 
         for (let i = 0; i < data.length; i += 4) {
             if (data[i + 3] > 130 && data[i] > 70) {
@@ -724,7 +636,6 @@ function solver(timeout) {
         morphologyEx(src, dst, MORPH_OPEN, M, anchor, 1,
             BORDER_CONSTANT, morphologyDefaultBorderValue());
         imshow(c, dst);
-        // console.log( c.toDataURL());
 
         //Image erode
         src = imread(c);
@@ -735,45 +646,38 @@ function solver(timeout) {
         dst.delete();
         M.delete();
 
-        // console.log( c.toDataURL());
         let imageDataURI = await toDataURL(c);
 
-        return await (imageUsingOCR(worker, imageDataURI));
+        return imageUsingOCR(worker, imageDataURI);
 
     }
 
     async function imageUsingOCRAntibot(image) {
-
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = image.src
-        await waitForImage(img);
+        const img = await createImageFrom(image.src);
         const c = document.createElement("canvas")
         c.width = image.width;
         c.height = image.height;
         const ctx = c.getContext("2d");
-        // ctx.filter = 'grayscale(1)';
         ctx.drawImage(img, 0, 0);
 
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
 
-        var hashMap = new Map();
+        let hashMap = new Map();
 
         for (let i = 0; i < data.length; i += 4) {
 
-            var rgba = data[i] + ',' + data[i + 1] + ',' + data[i + 2] + ',' + data[i + 3];
+            const rgba = data[i] + ',' + data[i + 1] + ',' + data[i + 2] + ',' + data[i + 3];
 
             if (hashMap.has(rgba)) {
                 hashMap.set(rgba, hashMap.get(rgba) + 1)
             } else {
                 hashMap.set(rgba, 1)
             }
-
         }
 
-        var maxCount = 0;
-        var objectKey = "0,0,0,0";
+        let maxCount = 0;
+        let objectKey = "0,0,0,0";
         hashMap.forEach((value, key) => {
             if (maxCount < value && key != "0,0,0,0") {
                 objectKey = key;
@@ -782,11 +686,10 @@ function solver(timeout) {
 
         });
 
-        var alphaValues = objectKey.split(",");
-        var alpha = Number(alphaValues[alphaValues.length - 1]);
+        let alphaValues = objectKey.split(",");
+        let alpha = Number(alphaValues[alphaValues.length - 1]);
 
-        var data_tmp = [];
-        var data_tmp_edges = [];
+        let data_tmp = [];
 
         for (let i = 0; i < data.length; i += 4) {
 
@@ -806,9 +709,6 @@ function solver(timeout) {
                 data[i + 1] = 0;
                 data[i + 2] = 0;
                 data[i + 3] = 255;
-                data_tmp_edges[i] = 1;
-                data_tmp_edges[i + 1] = 1;
-                data_tmp_edges[i + 2] = 1;
 
             } else {
                 data[i] = 255;
@@ -833,33 +733,31 @@ function solver(timeout) {
             }
         }
 
-        //console.log(imageData.data);
-
         ctx.putImageData(imageData, 0, 0);
-
-        // console.log( c.toDataURL());
         let imageDataURI = await toDataURL(c);
 
-        return await (imageUsingOCR(worker, imageDataURI));
-
-
+        return imageUsingOCR(worker, imageDataURI);
     }
 
     // Compare similar strings
     function LevenshteinDistance(a, b) {
-        if (a.length == 0) return b.length;
-        if (b.length == 0) return a.length;
+        if (a.length == 0) {
+            return b.length;
+        }
+        if (b.length == 0) {
+            return a.length;
+        }
 
-        var matrix = [];
+        const matrix = [];
 
         // increment along the first column of each row
-        var i;
+        let i;
         for (i = 0; i <= b.length; i++) {
             matrix[i] = [i];
         }
 
         // increment each column in the first row
-        var j;
+        let j;
         for (j = 0; j <= a.length; j++) {
             matrix[0][j] = j;
         }
@@ -881,8 +779,8 @@ function solver(timeout) {
     };
 
     function countPairs(s1, s2) {
-        var n1 = s1.length;
-        var n2 = s2.length;
+        let n1 = s1.length;
+        let n2 = s2.length;
 
         // To store the frequencies of
         // characters of string s1 and s2
@@ -896,24 +794,27 @@ function solver(timeout) {
 
         // Update the frequencies of
         // the characters of string s1
-        for (i = 0; i < n1; i++)
+        for (i = 0; i < n1; i++) {
             freq1[s1[i].charCodeAt() - 'a'.charCodeAt()]++;
+        }
 
         // Update the frequencies of
         // the characters of string s2
-        for (i = 0; i < n2; i++)
+        for (i = 0; i < n2; i++) {
             freq2[s2[i].charCodeAt() - 'a'.charCodeAt()]++;
+        }
 
         // Find the count of valid pairs
-        for (i = 0; i < 26; i++)
+        for (i = 0; i < 26; i++) {
             count += (Math.min(freq1[i], freq2[i]));
+        }
 
         return count;
     }
 
     async function getFinalOCRResultFromImage(image, leastLength) {
-        var ocrResult = "";
-        var tempResult = "";
+        let ocrResult = "";
+        let tempResult = "";
         ocrResult = await imageUsingOCRAntibotLowValues(image);
 
         if (ocrResult.length > leastLength || ocrResult.length > tempResult.length) {
@@ -999,7 +900,7 @@ function solver(timeout) {
             return;
         }
 
-        for (let i = 0; i < document.querySelectorAll(answerSelector).length; i++) {
+        for (const _element of document.querySelectorAll(answerSelector)) {
             if (document.querySelector(answerSelector).width <= document.querySelector(answerSelector).height) {
                 document.querySelector(answerSelector).value = "####"; //Using this as reference to move to next url
                 console.warn("Numeric/Roman captcha Detected , captcha cannot be solved at the moment");
@@ -1187,8 +1088,8 @@ function solver(timeout) {
                 //Check if scores are equal and assign the value
                 if (map.get(prevKey) == map.get(key) && prevKey.split("::")[0] == key.split("::")[0] && !answerSet.has(prevKey.split("::")[1]) &&
                     !answerSet.has(key.split("::")[1]) && !questionAnswerMap.has(prevKey.split("::")[0]) && !questionAnswerMap.has(key.split("::")[0])) {
-                    var prevCount = countPairs(prevKey.split("::")[1], prevKey.split("::")[0]);
-                    var currCount = countPairs(key.split("::")[1], key.split("::")[0]);
+                    const prevCount = countPairs(prevKey.split("::")[1], prevKey.split("::")[0]);
+                    const currCount = countPairs(key.split("::")[1], key.split("::")[0]);
 
                     if (prevCount > currCount) {
                         key = prevKey;
