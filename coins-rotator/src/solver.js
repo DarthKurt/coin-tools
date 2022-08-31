@@ -16,8 +16,10 @@ import {
 } from "@techstark/opencv-js";
 
 import Jimp from "Jimp";
-import imageUsingOCR from "./ocr";
+import OCR from "./ocr";
 import { createWorker } from 'tesseract.js';
+
+const MODULE_LOG_PREFIX = "[AB links solver]";
 
 function solver(timeout) {
     const worker = createWorker({
@@ -98,7 +100,7 @@ function solver(timeout) {
     async function imageUsingOCRAntibotQuestion(image) {
 
         if (!image || !image.src) {
-            console.warn("No images found");
+            console.warn(`${MODULE_LOG_PREFIX}: No images found`);
             return;
         }
 
@@ -123,13 +125,13 @@ function solver(timeout) {
         dst.delete();
 
         let imageDataURI = await toDataURL(c);
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibotLowValues(image) {
 
         if (!image || !image.src) {
-            console.warn("No images found");
+            console.warn(`${MODULE_LOG_PREFIX}: No images found`);
             return;
         }
 
@@ -164,13 +166,13 @@ function solver(timeout) {
         ctx.putImageData(imageData, 0, 0);
 
         let imageDataURI = await toDataURL(c);
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibotHighValues(image) {
 
         if (!image || !image.src) {
-            console.warn("No images found");
+            console.warn(`${MODULE_LOG_PREFIX}: No images found`);
             return;
         }
 
@@ -207,7 +209,7 @@ function solver(timeout) {
         ctx.putImageData(imageData, 0, 0);
 
         let imageDataURI = await toDataURL(c);
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
     }
 
     async function splitImageUsingOCRAntibotLowValues(imgSrc) {
@@ -414,7 +416,7 @@ function solver(timeout) {
 
         for (const element of len) {
             if (element < Math.floor(0.1 * c.width)) {
-                console.warn("Overlap detected");
+                console.warn(`${MODULE_LOG_PREFIX}: Overlap detected`);
                 return;
             }
         }
@@ -468,7 +470,7 @@ function solver(timeout) {
     async function imageUsingOCRAntibotQuestion1(image) {
 
         if (!image || !image.src) {
-            console.warn("No images found");
+            console.warn(`${MODULE_LOG_PREFIX}: No images found`);
             return;
         }
 
@@ -494,7 +496,7 @@ function solver(timeout) {
 
         let imageDataURI = await toDataURL(c);
 
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibot1(image) {
@@ -545,7 +547,7 @@ function solver(timeout) {
         ctx.putImageData(imageData, 0, 0);
         let imageDataURI = await toDataURL(c);
 
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
     }
 
     async function imageUsingOCRAntibotFiltered(image) {
@@ -557,7 +559,6 @@ function solver(timeout) {
         ctx.drawImage(img, 0, 0);
         const imageData = ctx.getImageData(0, 0, c.width, c.height);
         const data = imageData.data;
-        console.log(data);
 
         for (let i = 0; i < data.length; i += 4) {
             if (data[i + 3] > 130 && data[i] < 100) {
@@ -596,7 +597,7 @@ function solver(timeout) {
         M.delete();
 
         let imageDataURI = await toDataURL(c);
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
 
     }
 
@@ -648,7 +649,7 @@ function solver(timeout) {
 
         let imageDataURI = await toDataURL(c);
 
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
 
     }
 
@@ -736,7 +737,7 @@ function solver(timeout) {
         ctx.putImageData(imageData, 0, 0);
         let imageDataURI = await toDataURL(c);
 
-        return imageUsingOCR(worker, imageDataURI);
+        return OCR(worker, imageDataURI);
     }
 
     // Compare similar strings
@@ -826,7 +827,7 @@ function solver(timeout) {
         if (ocrResult.length > leastLength || ocrResult.length > tempResult.length) {
             tempResult = ocrResult.trim();
         } else {
-            ocrResult = await imageUsingOCR(worker, image);
+            ocrResult = await OCR(worker, image);
         }
 
 
@@ -896,24 +897,26 @@ function solver(timeout) {
             questionSelector = ".alert.alert-info img";
             answerSelector = ".antibotlinks [href='/'] img";
         } else {
-            console.warn("Ab links not detected");
+            console.warn(`${MODULE_LOG_PREFIX}: AB links were not detected`);
             return;
         }
 
         for (const _element of document.querySelectorAll(answerSelector)) {
             if (document.querySelector(answerSelector).width <= document.querySelector(answerSelector).height) {
-                document.querySelector(answerSelector).value = "####"; //Using this as reference to move to next url
-                console.warn("Numeric/Roman captcha Detected , captcha cannot be solved at the moment");
-                console.warn("Reload the page to see if the captcha changes");
+                 //Using this as reference to move to next url
+                document.querySelector(answerSelector).value = "####";
+                console.warn(`${MODULE_LOG_PREFIX}: Numeric/Roman captcha Detected , captcha cannot be solved at the moment`);
+                console.warn(`${MODULE_LOG_PREFIX}: Reload the page to see if the captcha changes`);
                 //   solveNumberCaptchaByAnswer()
                 return;
             }
         }
 
         if (document.querySelector(questionSelector).width < 5 * document.querySelector(questionSelector).height) {
-            document.querySelector(answerSelector).value = "####"; //Using this as reference to move to next url
-            console.warn("Numeric/Roman captcha Detected , captcha cannot be solved at the moment");
-            console.warn("Reload the page to see if the captcha changes");
+             //Using this as reference to move to next url
+            document.querySelector(answerSelector).value = "####";
+            console.warn(`${MODULE_LOG_PREFIX}: Numeric/Roman captcha Detected , captcha cannot be solved at the moment`);
+            console.warn(`${MODULE_LOG_PREFIX}: Reload the page to see if the captcha changes`);
             //  solveNumberCaptchaByQuestion()
             return;
         }
@@ -924,11 +927,13 @@ function solver(timeout) {
             leastLength = 3;
         }
 
-        console.log("Solving Ab Links....");
+        console.log(`${MODULE_LOG_PREFIX}: Solving Ab Links...`);
 
         if (!document.querySelector(questionSelector) || !document.querySelector(questionSelector).src) {
-            document.querySelector(answerSelector).value = "####"; //Using this as reference to move to next url
-            console.warn("No image source found for question");
+            //Using this as reference to move to next url
+            document.querySelector(answerSelector).value = "####";
+            console.warn(`${MODULE_LOG_PREFIX}: No image source found for question`);
+
             return
         }
 
@@ -950,7 +955,7 @@ function solver(timeout) {
         }
 
         if (!questionSolution || !questionSolution.includes(",") || questionSolution.split(",").length != 4) {
-            questionSolution = await imageUsingOCR(worker, questionImage);
+            questionSolution = await OCR(worker, questionImage);
             questionSolution = questionSolution.replace(/,$/, "");
         }
 
@@ -977,8 +982,9 @@ function solver(timeout) {
 
 
             if (questionImages.length < 4) {
-                document.querySelector(answerSelector).value = "####"; //Using this as reference to move to next url
-                console.warn("Captcha cannot be solved");
+                 //Using this as reference to move to next url
+                document.querySelector(answerSelector).value = "####";
+                console.warn(`${MODULE_LOG_PREFIX}: Captcha cannot be solved`);
                 return;
             }
 
@@ -1120,11 +1126,11 @@ function solver(timeout) {
             for (let i = 0; i < length; i++) {
                 let ans = questionAnswerMap.get(questions[i]);
                 let j = answersMap.get(ans);
-                console.log("Answer for " + questions[i] + "::" + answers[j]);
+                console.log(`${MODULE_LOG_PREFIX}: Answer for ${questions[i]}:: ${answers[j]}`);
                 if (document.querySelectorAll(answerSelector)[j + addCount]) {
                     document.querySelectorAll(answerSelector)[j + addCount].click();
                 } else {
-                    console.warn("Answer Selector could not be identified");
+                    console.warn(`${MODULE_LOG_PREFIX}: Answer Selector could not be identified`);
                 }
             }
 
