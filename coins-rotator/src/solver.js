@@ -23,6 +23,10 @@ const MODULE_LOG_PREFIX = "[AB links solver]";
 
 function solver(timeout) {
     const worker = createWorker({
+        // Dont forget to update when library is updated
+        workerPath: "https://unpkg.com/tesseract.js@3.0.2/dist/worker.min.js",
+        corePath: "https://unpkg.com/tesseract.js-core@3.0.1/tesseract-core-simd.wasm.js",
+        errorHandler: e => console.error(e),
         logger: m => console.log(m)
     });
 
