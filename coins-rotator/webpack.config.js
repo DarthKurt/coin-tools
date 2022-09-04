@@ -2,12 +2,12 @@ const path = require("path");
 const webpack = require("webpack");
 
 module.exports = {
-    entry: path.resolve(__dirname, "src/index.js"),
+    entry: path.resolve(__dirname, "src/index.ts"),
     output: {
-      path: path.resolve(__dirname, "dist"),
-      filename: "bundle.js",
-      library: "rtr",
-      libraryTarget: "umd",
+        path: path.resolve(__dirname, "dist"),
+        filename: "bundle.js",
+        library: "rtr",
+        libraryTarget: "umd",
     },
     module: {
         rules: [
@@ -16,11 +16,17 @@ module.exports = {
                 exclude: /node_modules/,
                 use: "babel-loader",
             },
+            {
+                test: /\.ts$/,
+                exclude: /node_module/,
+                use: 'ts-loader'
+            },
         ],
     },
     mode: "production",
     // mode: "development",
     resolve: {
+        extensions: ['.ts', '.js'],
         fallback: {
             fs: false,
             path: require.resolve("path-browserify"),
