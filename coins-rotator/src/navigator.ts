@@ -1,4 +1,5 @@
 import { NavigationData } from "./navigation-data";
+import PostponeCheck from "./postpone-check";
 
 interface HttpResponse {
     readonly headers: Object;
@@ -25,7 +26,9 @@ export default class Navigator {
 
     private _lock: boolean = false;
 
-    constructor(private readonly _http: Http) {
+    constructor(
+        private readonly _http: Http,
+        private readonly _postpone: PostponeCheck) {
     }
 
     public async navigateNextUrl(
@@ -62,6 +65,11 @@ export default class Navigator {
             }
 
             const nextUrl = dataEntry.url;
+            const nextWallet = dataEntry.address;
+            if(this._postpone.isWalletPostponed(nextUrl, nextWallet)) {
+                console.debug(`Wallet ${nextWallet} for ${nextUrl} postponed. Skip to next.`);
+                continue;
+            }
             const succeeded = await this.pingUrl(nextUrl);
 
             if (succeeded) {
@@ -88,17 +96,17 @@ export default class Navigator {
             timeout: 5000,
             onload: (response) => {
                 if (response && response.status == 200) {
-                    console.log(`URL ${websiteUrl} ping success.`);
+                    console.debug(`URL ${websiteUrl} ping success.`);
                     isNextUrlReachable = true;
                 } else {
-                    console.log(`URL ${websiteUrl} ping failed.`);
+                    console.debug(`URL ${websiteUrl} ping failed.`);
                 }
             },
             onerror: () => {
-                console.log(`URL ${websiteUrl} ping failed.`);
+                console.debug(`URL ${websiteUrl} ping failed.`);
             },
             ontimeout: () => {
-                console.log(`URL ${websiteUrl} ping timeout.`);
+                console.debug(`URL ${websiteUrl} ping timeout.`);
             },
         });
 
