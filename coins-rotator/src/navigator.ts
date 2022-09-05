@@ -33,8 +33,7 @@ export default class Navigator {
         startIndex: number,
         pingTimeout: number): Promise<void> {
 
-        if (!data
-             || data.length <= 0) {
+        if (!data || data.length <= 0) {
             return Promise.reject("Invalid navigation data");
         }
 
@@ -77,10 +76,10 @@ export default class Navigator {
         return new Promise(f => setTimeout(f, timeout));
     }
 
-    private pingUrl(websiteUrl: string): Promise<boolean> {
+    private async pingUrl(websiteUrl: string): Promise<boolean> {
         let isNextUrlReachable = false;
         console.log(`Ping: ${websiteUrl}`);
-        this._http.request({
+        const task = this._http.request({
             method: "GET",
             url: websiteUrl,
             headers: {
@@ -103,8 +102,10 @@ export default class Navigator {
             },
         });
 
-        return new Promise(
-            (resolve) => resolve(isNextUrlReachable)
-        );
+        await this.delay(5000);
+
+        task.abort();
+
+        return isNextUrlReachable;
     }
 }
