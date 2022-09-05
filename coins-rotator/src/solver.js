@@ -17,11 +17,12 @@ import {
 
 import Jimp from "Jimp";
 import OCR from "./ocr";
+import Utils from "./utils";
 import { createWorker } from 'tesseract.js';
 
 const MODULE_LOG_PREFIX = "[AB links solver]";
 
-function solver(timeout) {
+async function solver(timeout) {
     const worker = createWorker({
         // Dont forget to update when library is updated
         workerPath: "https://unpkg.com/tesseract.js@3.0.2/dist/worker.min.js",
@@ -29,6 +30,9 @@ function solver(timeout) {
         errorHandler: e => console.error(e),
         logger: m => console.log(m)
     });
+
+    const ocr = new OCR(worker);
+    await ocr.initWorker();
 
     let questions = [];
     let questionImages = [];
@@ -53,13 +57,6 @@ function solver(timeout) {
         await waitForImage(img);
 
         return img;
-    }
-
-    function toDataURL(c) {
-        return new Promise(function (resolve) {
-            const dataURI = c.toDataURL('image/png');
-            return resolve(dataURI);
-        });
     }
 
     function removeNoiseUsingImageData(imgdata, width, height, threshold) {
@@ -128,8 +125,8 @@ function solver(timeout) {
         src.delete();
         dst.delete();
 
-        let imageDataURI = await toDataURL(c);
-        return OCR(worker, imageDataURI);
+        let imageDataURI = await Utils.canvasToDataURL(c);
+        return await ocr.detect(imageDataURI);
     }
 
     async function imageUsingOCRAntibotLowValues(image) {
@@ -169,8 +166,8 @@ function solver(timeout) {
 
         ctx.putImageData(imageData, 0, 0);
 
-        let imageDataURI = await toDataURL(c);
-        return OCR(worker, imageDataURI);
+        let imageDataURI = await Utils.canvasToDataURL(c);
+        return await ocr.detect(imageDataURI);
     }
 
     async function imageUsingOCRAntibotHighValues(image) {
@@ -212,8 +209,8 @@ function solver(timeout) {
 
         ctx.putImageData(imageData, 0, 0);
 
-        let imageDataURI = await toDataURL(c);
-        return OCR(worker, imageDataURI);
+        let imageDataURI = await Utils.canvasToDataURL(c);
+        return await ocr.detect(imageDataURI);
     }
 
     async function splitImageUsingOCRAntibotLowValues(imgSrc) {
@@ -243,7 +240,7 @@ function solver(timeout) {
         }
 
         ctx.putImageData(imageData, 0, 0);
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
         return splitImage(imageDataURI);
 
     }
@@ -280,7 +277,7 @@ function solver(timeout) {
 
         ctx.putImageData(imageData, 0, 0);
 
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
         return splitImage(imageDataURI);
     }
 
@@ -319,7 +316,7 @@ function solver(timeout) {
 
         ctx.putImageData(imageData, 0, 0);
 
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
 
         return splitImage(imageDataURI);
 
@@ -498,9 +495,9 @@ function solver(timeout) {
         src.delete();
         dst.delete();
 
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
 
-        return OCR(worker, imageDataURI);
+        return await ocr.detect(imageDataURI);
     }
 
     async function imageUsingOCRAntibot1(image) {
@@ -549,9 +546,9 @@ function solver(timeout) {
         }
 
         ctx.putImageData(imageData, 0, 0);
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
 
-        return OCR(worker, imageDataURI);
+        return await ocr.detect(imageDataURI);
     }
 
     async function imageUsingOCRAntibotFiltered(image) {
@@ -600,8 +597,8 @@ function solver(timeout) {
         dst.delete();
         M.delete();
 
-        let imageDataURI = await toDataURL(c);
-        return OCR(worker, imageDataURI);
+        let imageDataURI = await Utils.canvasToDataURL(c);
+        return await ocr.detect(imageDataURI);
 
     }
 
@@ -651,10 +648,9 @@ function solver(timeout) {
         dst.delete();
         M.delete();
 
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
 
-        return OCR(worker, imageDataURI);
-
+        return await ocr.detect(imageDataURI);
     }
 
     async function imageUsingOCRAntibot(image) {
@@ -739,9 +735,9 @@ function solver(timeout) {
         }
 
         ctx.putImageData(imageData, 0, 0);
-        let imageDataURI = await toDataURL(c);
+        let imageDataURI = await Utils.canvasToDataURL(c);
 
-        return OCR(worker, imageDataURI);
+        return await ocr.detect(imageDataURI);
     }
 
     // Compare similar strings
@@ -831,7 +827,7 @@ function solver(timeout) {
         if (ocrResult.length > leastLength || ocrResult.length > tempResult.length) {
             tempResult = ocrResult.trim();
         } else {
-            ocrResult = await OCR(worker, image);
+            return await ocr.detect(image);
         }
 
 
@@ -959,7 +955,7 @@ function solver(timeout) {
         }
 
         if (!questionSolution || !questionSolution.includes(",") || questionSolution.split(",").length != 4) {
-            questionSolution = await OCR(worker, questionImage);
+            questionSolution = await ocr.detect(questionImage);
             questionSolution = questionSolution.replace(/,$/, "");
         }
 
@@ -1141,7 +1137,14 @@ function solver(timeout) {
         }
     }
 
-    setTimeout(solverImpl, timeout);
+    const timer = setTimeout(solverImpl, timeout);
+
+    return {
+        abort: async () => {
+            await worker.terminate();
+            clearTimeout(timer)
+        },
+    };
 }
 
 export default solver;

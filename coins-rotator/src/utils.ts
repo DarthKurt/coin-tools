@@ -25,7 +25,7 @@ export default class Utils {
 
         for (const k of Object.keys(messages).map(key => parseInt(key))) {
             const msg = messages[k];
-            if(msg && Utils._includesOneOf(normalizeSrc, msg)){
+            if (msg && Utils._includesOneOf(normalizeSrc, msg)) {
                 return k;
             }
         }
@@ -41,5 +41,12 @@ export default class Utils {
         } else {
             element.click();
         }
+    }
+
+    public static canvasToDataURL(canvas: HTMLCanvasElement): Promise<string> {
+        return new Promise((resolve) => {
+            const dataURI = canvas.toDataURL('image/png');
+            return resolve(dataURI);
+        });
     }
 }
