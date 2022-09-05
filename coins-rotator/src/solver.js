@@ -28,7 +28,7 @@ async function solver(timeout) {
         workerPath: "https://unpkg.com/tesseract.js@3.0.2/dist/worker.min.js",
         corePath: "https://unpkg.com/tesseract.js-core@3.0.1/tesseract-core-simd.wasm.js",
         errorHandler: e => console.error(e),
-        logger: m => console.log(m)
+        logger: m => console.debug(m),
     });
 
     const ocr = new OCR(worker);
