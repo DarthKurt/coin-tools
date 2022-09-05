@@ -24,7 +24,8 @@ export default class Utils {
         const normalizeSrc = srcString.toLowerCase();
 
         for (const k of Object.keys(messages).map(key => parseInt(key))) {
-            if(Utils._includesOneOf(normalizeSrc, messages[k])){
+            const msg = messages[k];
+            if(msg && Utils._includesOneOf(normalizeSrc, msg)){
                 return k;
             }
         }
